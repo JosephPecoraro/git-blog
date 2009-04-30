@@ -1,0 +1,18 @@
+- today = Date.today
+!!! xml
+%feed{ :xmlns => "http://www.w3.org/2005/Atom" }
+  %title= blog_meta[:blog_title]
+  %link{ :href => blog_meta[:blog_url] }
+  %subtitle= blog_meta[:blog_slogan]
+  %updated== #{today.strftime("%F")}T#{today.strftime("%T%z")}
+  - for post in posts
+    - ext_name = File.extname( Dir["posts/#{post[:slug]}.*"].select { |p| !p.match(/\.xhtml$/) }[0] )
+    - post_path = File.expand_path("posts/#{post[:slug]}.xhtml")
+    - post_src  = File.expand_path("posts/#{post[:slug]}#{ext_name}")
+    - post_date = File.mtime( post_src )
+    %entry
+      %title= post[:title]
+      %link{ :href => "posts/#{post[:slug]}.xhtml" }
+      %id== #{blog_meta[:blog_url]}/posts/#{post[:slug]}.xhtml
+      %updated== #{post_date.strftime("%F")}T#{post_date.strftime("%T%z")}
+      %content{ :type => "xhtml", 'xml:lang' => "en", 'xml:base' => blog_meta[:blog_url]+"/" }= (Hpricot.XML(File.new(post_path))/:body).html.strip
