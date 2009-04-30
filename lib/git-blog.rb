@@ -135,6 +135,34 @@ task :push, :remote_name do |_, params|
   puts "Changes pushed to #{remote_name}."
 end
 
+desc 'Setup Blog Metadata (Title, URL, Slogan)'
+task :meta do
+	blog_meta = get_blog_meta
+	puts 'Setup Blog Metadata'
+	puts 'An empty value will keep the value what it was.'
+	puts
+
+	print "blog_name [#{blog_meta[:blog_name]}]: "
+	name = STDIN.gets.chomp
+	blog_meta[:blog_name] = name if !name.empty?
+
+	print "blog_url [#{blog_meta[:blog_url]}]: "
+	url = STDIN.gets.chomp
+	blog_meta[:blog_url] = url if !url.empty?
+
+	print "blog_slogan [#{blog_meta[:blog_slogan]}]: "
+	slogan = STDIN.gets.chomp
+	blog_meta[:blog_slogan] = slogan if !slogan.empty?
+	
+	File.open('meta.yaml', 'w') do |f|
+		f.puts( blog_meta.to_yaml )
+	end
+	
+	puts
+	puts 'Blog Metadata has been updated.  You may want to redeploy!'
+	puts '  rake deploy'
+end
+
 desc 'Remove all generated xhtml'
 task :clobber do
   Dir['posts/*.xhtml'].each do |path|

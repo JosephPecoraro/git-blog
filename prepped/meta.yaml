@@ -1,3 +1,4 @@
-:blog_name: Joe
-:blog_url: http://blog.bogojoker.com
+---
+:blog_name: yet another git blog
+:blog_url: http://example.com
 :blog_slogan: Cause I Can.
