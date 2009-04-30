@@ -17,6 +17,7 @@ task :initialize do
   mkdir 'posts'
   mkdir 'design'
   cp GitBlog::Scope / :prepped / '.gitignore', '.'
+	cp GitBlog::Scope / :prepped / 'meta.yaml', '.'
   %w(welcome_to_your_git_blog.markdown .gitignore).each do |file|
     cp GitBlog::Scope / :prepped / :posts / file, 'posts'
   end
@@ -33,6 +34,7 @@ task :initialize do
   end
   chmod 0755, '.git'
   chmod 0664, '.gitignore'
+	chmod 0664, 'meta.yaml'
   chmod 0664, :posts / '.gitignore'
   
   blog.add
@@ -117,7 +119,7 @@ task :post do
   blog.add path
   blog.commit "New post: #{title}"
   
-  puts "Post '#{title.slugize}' comitted."
+  puts "Post '#{title.slugize}' committed."
 end
 
 desc 'Push changes'
