@@ -3,6 +3,8 @@ include FileUtils
 
 require 'git-blog/core'
 require 'haml'
+require 'yaml'
+require 'hpricot'
 
 desc 'Setup the blog repository'
 task :initialize do
@@ -17,7 +19,7 @@ task :initialize do
   mkdir 'posts'
   mkdir 'design'
   cp GitBlog::Scope / :prepped / '.gitignore', '.'
-	cp GitBlog::Scope / :prepped / 'meta.yaml', '.'
+  cp GitBlog::Scope / :prepped / 'meta.yaml', '.'
   %w(welcome_to_your_git_blog.markdown .gitignore).each do |file|
     cp GitBlog::Scope / :prepped / :posts / file, 'posts'
   end
@@ -34,7 +36,7 @@ task :initialize do
   end
   chmod 0755, '.git'
   chmod 0664, '.gitignore'
-	chmod 0664, 'meta.yaml'
+  chmod 0664, 'meta.yaml'
   chmod 0664, :posts / '.gitignore'
   
   blog.add
@@ -142,16 +144,7 @@ end
 
 # desc 'Invisible task, generates index.xhtml'
 task :index do
-  path = File.expand_path('.')
-  repo = should_be_initialized path
-  
-  commits = repo.log("b").select {|c| c.message =~ /New post: /}
-  posts = []
-  commits.map do |commit|
-    title = commit.message.match(/New post: (.*)$/)[1]
-    posts << {:title => title, :slug => title.slugize}
-  end
-  
+  posts = get_posts
   template = IO.read :design / :index.haml
   
   completed = Haml::Engine.new(template, :filename => :design / :index.haml).
@@ -164,11 +157,33 @@ task :index do
   puts "index.xhtml compiled"
 end
 
+# Atom Feed Generator
+# desc 'Invisible task, generates posts/feed.atom'
+task :atom do
+  posts = get_posts(10)
+  blog_meta = get_blog_meta
+  
+  haml_path = :design / :atom.haml
+  template = IO.read haml_path
+  completed = Haml::Engine.new(template, :filename => haml_path).
+    to_html Object.new, :posts => posts, :blog_meta => blog_meta
+  
+  destination = :posts / :feed.atom
+  file = File.open destination, File::RDWR|File::TRUNC|File::CREAT, 0664
+  file.puts completed
+  file.close
+  puts "posts/feed.atom compiled"
+end
+
 desc 'Generate xhtml files from posts and design'
 task :deploy => [:clobber, :index] do
   should_be_initialized File.expand_path('.')
   
   Dir['posts/*.*'].each do |path|
+    
+    # Ignore Atom Feed
+    next if File.extname(path).match(/^\.atom$/)
+  
     markup = File.extname(path).downcase.gsub(/^\./,'')
     content = IO.read path
     first_line = content.match(/^(.*)\n/)[1]
@@ -193,6 +208,10 @@ task :deploy => [:clobber, :index] do
     file.close
     puts "#{path} -> #{destination} (as #{markup})"
   end
+
+  # Create the atom feed, including the xhtml content we just generated
+  Rake::Task[:atom].invoke
+
 end
 
 
@@ -210,4 +229,24 @@ def should_be_initialized path
     File.directory? File.join(path, 'posts') and
     (blog = Git.open path rescue false)
   blog
+end
+
+
+# Get Blog Posts from Commit History
+def get_posts(count=30)
+  path = File.expand_path('.')
+  repo = should_be_initialized path
+  commits = repo.log.select {|c| c.message =~ /New post: /i}
+  posts = []
+  commits.each do |commit|
+    title = commit.message.match(/New post: (.*)$/i)[1]
+    posts << {:title => title, :slug => title.slugize}
+    break if posts.length >= count
+  end
+  posts
+end
+
+# Load Blog Meta Data
+def get_blog_meta
+  YAML.load_file( 'meta.yaml' )
 end
